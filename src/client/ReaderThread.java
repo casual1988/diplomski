@@ -18,10 +18,19 @@ public class ReaderThread extends Thread {
     private BufferedReader in;
     private MessageData data;
 
+    private ClientForm frm;
+    
     public ReaderThread(Socket sock, BufferedReader in, MessageData data) {
         this.sock = sock;
         this.in = in;
         this.data = data;
+        start();
+    }
+    public ReaderThread(Socket sock, BufferedReader in, MessageData data, ClientForm frm) {
+        this.sock = sock;
+        this.in = in;
+        this.data = data;
+        this.frm = frm;
         start();
     }
 
@@ -32,7 +41,8 @@ public class ReaderThread extends Thread {
             while (true) {
                 msg = in.readLine();
                 if (msg != null) {
-                    System.out.println(msg + "\n");
+                    frm.getjTextArea1().append(msg + "\n");
+                    //System.out.println(msg + "\n");
                     
                 }
             }

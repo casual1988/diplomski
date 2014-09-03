@@ -18,12 +18,18 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.security.KeyPair;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.DefaultListModel;
+import javax.swing.JTextArea;
 import javax.swing.ListModel;
+import kriptotest.CryptoJavniKljuc;
+import kriptotest.Frame;
 
 /**
  *
@@ -32,6 +38,8 @@ import javax.swing.ListModel;
 public class ClientForm extends javax.swing.JFrame {
 
     public static final int TCP_PORT = 9000;
+    private ClientInfo currentClient= new ClientInfo();
+    
     BufferedReader in;
     InetAddress addr;
     Socket sock;
@@ -46,11 +54,16 @@ public class ClientForm extends javax.swing.JFrame {
      */
     public ClientForm() {
         initComponents();
-       
+        CryptoJavniKljuc javni = new CryptoJavniKljuc();
+        KeyPair key = javni.generateKeyPair();
+        currentClient.setKey(key.getPublic());
+        
+        currentClient.setUsername("Aleksandar");
         if(connectToServer()){
             message="Uspjesna konekcija na server";
              //pokretanje mini servera za prijem poruka
-            (new Thread(new ClientServer())).start();
+           
+            (new Thread(new ClientServer(this))).start();
             
         }
         else message="konekcija nije uspjela";
@@ -60,7 +73,7 @@ public class ClientForm extends javax.swing.JFrame {
 
     public boolean connectToServer() {
         try {
-            addr = InetAddress.getByName("192.168.1.4");
+            addr = InetAddress.getByName("192.168.1.9");
             sock = new Socket(addr, TCP_PORT);
             oos = new ObjectOutputStream(sock.getOutputStream());
             ois = new ObjectInputStream(sock.getInputStream()); 
@@ -118,9 +131,18 @@ public class ClientForm extends javax.swing.JFrame {
             this.recipient= (ClientInfo) jList1.getSelectedValue();
           String msg= jTextArea2.getText();
              sendMSG(recipient, msg);
+             jTextArea2.setText("");
         } catch (IOException ex) {
             Logger.getLogger(ClientForm.class.getName()).log(Level.SEVERE, null, ex);
         }
+    }
+     public void sendPublicKey() throws IOException, ClassNotFoundException{
+         System.out.println("slanje pk");
+         Frame frame= new Frame();
+         frame.setData(currentClient.getKey().getEncoded());
+         oos.writeObject(currentClient);
+          String response= (String) ois.readObject(); 
+     //proba ,slanje kljuca na server za ovog usera,da bi server cuvao i razmjenio kljuceve mejdu korisnicima
     }
    
     
@@ -152,7 +174,9 @@ sock.getOutputStream())), true);
         //    ReaderThread reader = new ReaderThread(sock, in, msg);
         //    WriterThread writer = new WriterThread(out, msg);
  out.println(msg);
- jTextArea1.append(msg);
+ Calendar cal = Calendar.getInstance();
+ // "               "+cal.getTimeInMillis()
+ jTextArea1.append(currentClient.getUsername() + ":   " + msg+ "\n");
 }
     
     /**
@@ -320,6 +344,14 @@ sock.getOutputStream())), true);
         });
     }
 
+    public  JTextArea getjTextArea1() {
+        return jTextArea1;
+    }
+
+    public void setjTextArea1(JTextArea jTextArea1) {
+        this.jTextArea1 = jTextArea1;
+    }
+     
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButton1;
     private javax.swing.JList jList1;

@@ -13,6 +13,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import javax.swing.JTextArea;
 
 /**
  *
@@ -24,11 +25,18 @@ public class ClientServer extends Thread{
     private Socket sock;
     private BufferedReader in;
     private PrintWriter out;
+    private MessageData msg;
+    private ClientForm frm;
+
+  
+    public ClientServer(){}
     
-    
-    
+    public ClientServer(ClientForm frm)
+    {
+     this.frm = frm;
+    }
      public void  run(){//acceptClientMessage(){
-        MessageData msg = new MessageData();
+         msg = new MessageData();
 try {
 // slušaj zahteve na datom portu, message port
 int port=9001;
@@ -48,7 +56,9 @@ String request;
  // msg.setOut(out);
           
  // WriterThread writer = new WriterThread(out, msg);        
-  ReaderThread reader = new ReaderThread(sock, in, msg);
+  ReaderThread reader = new ReaderThread(sock, in, msg,frm);
+ 
+ // this.textArea.setText(msg.getMessager());
        
       }
 } catch (Exception ex) {
@@ -80,6 +90,10 @@ ex.printStackTrace();
     public void setOut(PrintWriter out) {
         this.out = out;
     }
-     
-     
+    public MessageData getMessage(){
+        return this.msg;
+            }
+    public void setMessage(MessageData msg){
+        this.msg = msg;
+            } 
 }
