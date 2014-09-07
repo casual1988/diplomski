@@ -8,6 +8,7 @@ package client;
 
 import java.io.Serializable;
 import java.net.Socket;
+import java.security.Key;
 import java.security.PublicKey;
 
 /**
@@ -21,6 +22,7 @@ public class ClientInfo implements Serializable{
     private String ip;
     private Socket sock;
     private PublicKey key;  //mozda cu cuvati javne kljuceve na serveru ako nadjem nacin
+    private Key secretKey;
    
     public ClientInfo() {
     }
@@ -71,6 +73,14 @@ public class ClientInfo implements Serializable{
 
     public void setKey(PublicKey key) {
         this.key = key;
+    }
+
+    public Key getSecretKey() {
+        return secretKey;
+    }
+
+    public void setSecretKey(Key secretKey) {
+        this.secretKey = secretKey;
     }
     
 

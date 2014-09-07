@@ -18,6 +18,7 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.security.Key;
 import java.security.KeyPair;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -28,7 +29,9 @@ import java.util.logging.Logger;
 import javax.swing.DefaultListModel;
 import javax.swing.JTextArea;
 import javax.swing.ListModel;
+import javax.swing.event.ListSelectionEvent;
 import kriptotest.CryptoJavniKljuc;
+import kriptotest.CryptoTajniKljuc;
 import kriptotest.Frame;
 
 /**
@@ -57,6 +60,12 @@ public class ClientForm extends javax.swing.JFrame {
         CryptoJavniKljuc javni = new CryptoJavniKljuc();
         KeyPair key = javni.generateKeyPair();
         currentClient.setKey(key.getPublic());
+      
+        // 
+     //   CryptoTajniKljuc tajni = new CryptoTajniKljuc();
+     //   Key secretKey = tajni.generateKey();
+     //   javni.encrypt(secretKey.getEncoded(), key.getPublic());
+       //
         
         currentClient.setUsername("Aleksandar");
         if(connectToServer()){
@@ -104,13 +113,17 @@ public class ClientForm extends javax.swing.JFrame {
     }
 
     public void getOnlineUser()throws IOException, ClassNotFoundException {
+        sendPublicKey();
         oos.writeObject("getOnlineUser");
         onlineUser= (ArrayList<ClientInfo>) ois.readObject(); 
        DefaultListModel model = new DefaultListModel();
         for (int i = 0; i < onlineUser.size(); i++) {
             model.addElement(onlineUser.get(i));
+            System.out.println(onlineUser.get(i).getKey().toString());
         }
-       jList1.setModel(model);
+       jList1.setModel(model); 
+     //  oos.flush();
+    //   sendPublicKey();
     }
      public void signOut()throws IOException, ClassNotFoundException {
         oos.writeObject("signout");
@@ -129,7 +142,11 @@ public class ClientForm extends javax.swing.JFrame {
     public void sendMessageToClint(){
         try {
             this.recipient= (ClientInfo) jList1.getSelectedValue();
-          String msg= jTextArea2.getText();
+            String msg= jTextArea2.getText();
+            if(this.recipient.getSecretKey()== null)
+            {
+                sendMSG(recipient, generateSecretKey(recipient));
+            }
              sendMSG(recipient, msg);
              jTextArea2.setText("");
         } catch (IOException ex) {
@@ -141,9 +158,26 @@ public class ClientForm extends javax.swing.JFrame {
          Frame frame= new Frame();
          frame.setData(currentClient.getKey().getEncoded());
          oos.writeObject(currentClient);
-          String response= (String) ois.readObject(); 
+         System.out.println("poslano");
+         
+         String response= (String) ois.readObject(); 
+         System.out.println(response);
+         System.out.println("primljeno");
      //proba ,slanje kljuca na server za ovog usera,da bi server cuvao i razmjenio kljuceve mejdu korisnicima
     }
+     public String  generateSecretKey(ClientInfo client)
+     {
+        CryptoTajniKljuc tajni = new CryptoTajniKljuc();
+        Key secretKey = tajni.generateKey();
+        this.recipient.setSecretKey(secretKey);
+        CryptoJavniKljuc javni = new CryptoJavniKljuc();
+        String cipherText = javni.encrypt(secretKey.getEncoded(), client.getKey()).toString();
+        System.out.println(cipherText);
+        return cipherText;
+     }
+     public void recivedSecretKey(String msg, ClientInfo currentClient){
+         CryptoTajniKljuc tajni = new CryptoTajniKljuc();
+     }
    
     
     private  void connectionWithClient(ClientInfo client) throws UnknownHostException, IOException{
@@ -203,6 +237,11 @@ sock.getOutputStream())), true);
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
+        jList1.addListSelectionListener(new javax.swing.event.ListSelectionListener() {
+            public void valueChanged(javax.swing.event.ListSelectionEvent evt) {
+                jList1ValueChanged(evt);
+            }
+        });
         jScrollPane1.setViewportView(jList1);
 
         jTextArea1.setColumns(20);
@@ -304,6 +343,10 @@ sock.getOutputStream())), true);
         }
     }//GEN-LAST:event_jMenuItem2ActionPerformed
 
+    private void jList1ValueChanged(javax.swing.event.ListSelectionEvent evt) {//GEN-FIRST:event_jList1ValueChanged
+        System.out.println("proba");
+    }//GEN-LAST:event_jList1ValueChanged
+
     /**
      * @param args the command line arguments
      */
@@ -352,6 +395,7 @@ sock.getOutputStream())), true);
         this.jTextArea1 = jTextArea1;
     }
      
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButton1;
     private javax.swing.JList jList1;
