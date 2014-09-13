@@ -11,7 +11,7 @@ import java.util.Scanner;
 
 /**
  *
- * @author student
+ * @author student win7
  */
 class MessageData {
 
@@ -47,7 +47,6 @@ class MessageData {
         }
         return message;
     }
-
     public String writeMessage() {
         Scanner ulaz = new Scanner(System.in);
         String message = ulaz.nextLine();
