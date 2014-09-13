@@ -5,15 +5,20 @@
  */
 package client;
 
+import com.sun.org.apache.xerces.internal.impl.dv.util.Base64;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -26,7 +31,10 @@ import java.util.Date;
 import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import javax.swing.DefaultListModel;
+import javax.swing.JList;
 import javax.swing.JTextArea;
 import javax.swing.ListModel;
 import javax.swing.event.ListSelectionEvent;
@@ -41,51 +49,53 @@ import kriptotest.Frame;
 public class ClientForm extends javax.swing.JFrame {
 
     public static final int TCP_PORT = 9000;
-    private ClientInfo currentClient= new ClientInfo();
-    
+    public static final int clientPort = 9001;
+    private ClientInfo currentClient = new ClientInfo();
+
     BufferedReader in;
     InetAddress addr;
     Socket sock;
     PrintWriter out;
     String message;
     ArrayList<ClientInfo> onlineUser = new ArrayList<ClientInfo>();
-    ObjectOutputStream oos;  
-    ObjectInputStream  ois;
+    ObjectOutputStream oos;
+    ObjectInputStream ois;
     ClientInfo recipient;
+    KeyPair key;
+    CryptoJavniKljuc javni;
+    CryptoTajniKljuc tajni;
+
     /**
      * Creates new form ClientForm
      */
     public ClientForm() {
         initComponents();
-        CryptoJavniKljuc javni = new CryptoJavniKljuc();
-        KeyPair key = javni.generateKeyPair();
+        javni = new CryptoJavniKljuc();
+        this.key = javni.generateKeyPair();
         currentClient.setKey(key.getPublic());
-      
-        // 
-     //   CryptoTajniKljuc tajni = new CryptoTajniKljuc();
-     //   Key secretKey = tajni.generateKey();
-     //   javni.encrypt(secretKey.getEncoded(), key.getPublic());
-       //
-        
-        currentClient.setUsername("Aleksandar");
-        if(connectToServer()){
-            message="Uspjesna konekcija na server";
-             //pokretanje mini servera za prijem poruka
-           
-            (new Thread(new ClientServer(this))).start();
-            
-        }
-        else message="konekcija nije uspjela";
-        
-    }
 
+        // 
+        //   CryptoTajniKljuc tajni = new CryptoTajniKljuc();
+        //   Key secretKey = tajni.generateKey();
+        //   javni.encrypt(secretKey.getEncoded(), key.getPublic());
+        //
+        currentClient.setUsername("Aleksandar");
+        if (connectToServer()) {
+            message = "Uspjesna konekcija na server";
+            //pokretanje mini servera za prijem poruka
+
+            (new Thread(new ClientServer(this))).start();
+        } else {
+            message = "konekcija nije uspjela";
+        }
+    }
 
     public boolean connectToServer() {
         try {
-            addr = InetAddress.getByName("192.168.1.9");
+            addr = InetAddress.getByName("192.168.1.3");
             sock = new Socket(addr, TCP_PORT);
             oos = new ObjectOutputStream(sock.getOutputStream());
-            ois = new ObjectInputStream(sock.getInputStream()); 
+            ois = new ObjectInputStream(sock.getInputStream());
             return true;
         } catch (IOException e) {
             e.printStackTrace();
@@ -94,7 +104,7 @@ public class ClientForm extends javax.swing.JFrame {
     }
 
     public boolean login() throws IOException {
-    //    out.println("login " + user.getUsername() + " " + user.getPassword());
+        //    out.println("login " + user.getUsername() + " " + user.getPassword());
         if (in.readLine().equals("200")) {
             return true;
         } else {
@@ -112,107 +122,165 @@ public class ClientForm extends javax.swing.JFrame {
         }
     }
 
-    public void getOnlineUser()throws IOException, ClassNotFoundException {
+    public void getOnlineUser() throws IOException, ClassNotFoundException {
         sendPublicKey();
         oos.writeObject("getOnlineUser");
-        onlineUser= (ArrayList<ClientInfo>) ois.readObject(); 
-       DefaultListModel model = new DefaultListModel();
+        onlineUser = (ArrayList<ClientInfo>) ois.readObject();
+        DefaultListModel model = new DefaultListModel();
         for (int i = 0; i < onlineUser.size(); i++) {
             model.addElement(onlineUser.get(i));
-            System.out.println(onlineUser.get(i).getKey().toString());
+           // System.out.println(onlineUser.get(i).getKey().toString());
         }
-       jList1.setModel(model); 
-     //  oos.flush();
-    //   sendPublicKey();
+        jList1.setModel(model);
+        //  oos.flush();
+        //   sendPublicKey();
     }
-     public void signOut()throws IOException, ClassNotFoundException {
+
+    public void signOut() throws IOException, ClassNotFoundException {
         oos.writeObject("signout");
-        String response= (String) ois.readObject(); 
-        if(response.equals("200")) closeConnection();
-        
+        String response = (String) ois.readObject();
+        if (response.equals("200")) {
+            closeConnection();
+        }
     }
-    
-    public void sendObject() throws IOException{
-   ClientInfo client= new ClientInfo();
-   client.setUsername("aco");
+
+    public void sendObject() throws IOException {
+        ClientInfo client = new ClientInfo();
+        client.setUsername("aco");
         oos.writeObject(client);
     }
-    
+
     //metoda za salnje
-    public void sendMessageToClint(){
+    public void sendMessageToClint() {
         try {
-            this.recipient= (ClientInfo) jList1.getSelectedValue();
-            String msg= jTextArea2.getText();
-            if(this.recipient.getSecretKey()== null)
-            {
-                sendMSG(recipient, generateSecretKey(recipient));
+            this.recipient = (ClientInfo) jList1.getSelectedValue();
+            if (this.recipient.getSock() == null) {
+                this.recipient.setSock(getClientSocket(this.recipient));
             }
-             sendMSG(recipient, msg);
-             jTextArea2.setText("");
+            String msg = jTextArea2.getText();
+            if (this.recipient.getSecretKey() == null) {
+                byte[] kez = generateSecretKeyProba(recipient);
+                sendSecretKey(recipient, kez);   // napravio novu samo za slanje kljuca
+                sendMSG(recipient, msg.getBytes());  // prvo slanje kljuca pa onda poruke
+                jTextArea2.setText("");
+            } else {
+                //  byte[] encript = tajni.encrypt(msg.getBytes(), this.recipient.getSecretKey());
+                //sendMSG(recipient, encript); //dodao gdet bytes
+                sendMSG(recipient, msg.getBytes());
+                jTextArea1.append(currentClient.getUsername() + ":   " + msg + "\n");
+                jTextArea2.setText("");
+            }
         } catch (IOException ex) {
             Logger.getLogger(ClientForm.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-     public void sendPublicKey() throws IOException, ClassNotFoundException{
-         System.out.println("slanje pk");
-         Frame frame= new Frame();
-         frame.setData(currentClient.getKey().getEncoded());
-         oos.writeObject(currentClient);
-         System.out.println("poslano");
-         
-         String response= (String) ois.readObject(); 
-         System.out.println(response);
-         System.out.println("primljeno");
-     //proba ,slanje kljuca na server za ovog usera,da bi server cuvao i razmjenio kljuceve mejdu korisnicima
+
+    public void sendPublicKey() throws IOException, ClassNotFoundException {
+        System.out.println("slanje pk");
+        Frame frame = new Frame();
+        frame.setData(currentClient.getKey().getEncoded());
+        oos.writeObject(currentClient);
+        System.out.println("poslano");
+
+        String response = (String) ois.readObject();
+        System.out.println(response);
+        System.out.println("primljeno");
+        //proba ,slanje kljuca na server za ovog usera,da bi server cuvao i razmjenio kljuceve mejdu korisnicima
     }
-     public String  generateSecretKey(ClientInfo client)
-     {
-        CryptoTajniKljuc tajni = new CryptoTajniKljuc();
+
+    public String generateSecretKey(ClientInfo client) throws UnsupportedEncodingException {
+        tajni = new CryptoTajniKljuc();
         Key secretKey = tajni.generateKey();
         this.recipient.setSecretKey(secretKey);
-        CryptoJavniKljuc javni = new CryptoJavniKljuc();
-        String cipherText = javni.encrypt(secretKey.getEncoded(), client.getKey()).toString();
+        // CryptoJavniKljuc javni = new CryptoJavniKljuc();
+        byte[] byteText = javni.encrypt(secretKey.getEncoded(), client.getKey());
+        String cipherText = new String(byteText, "UTF8");
         System.out.println(cipherText);
         return cipherText;
+    }
+
+     public Key recivedSecretKey(byte[] msg, ClientInfo currentClient,KeyPair key) throws UnsupportedEncodingException{
+         CryptoJavniKljuc javni = new CryptoJavniKljuc();
+         byte[] text = javni.decrypt(msg, key.getPrivate());
+         SecretKey spec=  new SecretKeySpec(text, "DES");
+         Key keyaa = (Key)spec;
+         currentClient.setSecretKey(keyaa);
+         System.out.println(keyaa.toString());
+         return keyaa;
      }
-     public void recivedSecretKey(String msg, ClientInfo currentClient){
-         CryptoTajniKljuc tajni = new CryptoTajniKljuc();
-     }
-   
-    
-    private  void connectionWithClient(ClientInfo client) throws UnknownHostException, IOException{
-  int port=9001;
-    InetAddress addr1 = InetAddress.getByName(client.getIp());
+
+    public byte[] generateSecretKeyProba(ClientInfo client) throws UnsupportedEncodingException {
+        tajni = new CryptoTajniKljuc();
+        Key secretKey = tajni.generateKey();
+        this.recipient.setSecretKey(secretKey);
+        //CryptoJavniKljuc javni = new CryptoJavniKljuc();
+        byte[] byteText = javni.encrypt(secretKey.getEncoded(), client.getKey());
+        // String cipherText = new String(byteText,"UTF8");
+        // System.out.println(cipherText);
+        return byteText;
+    }
+
+    private void connectionWithClient(ClientInfo client) throws UnknownHostException, IOException {
+        int port = 9001;
+        InetAddress addr1 = InetAddress.getByName(client.getIp());
 //Socket sock1 = new Socket(addr1, Integer.parseInt(niz[1]));
-Socket sock = new Socket(addr1, port);
-BufferedReader in = new BufferedReader(new InputStreamReader(
-sock.getInputStream()));
+        Socket sock = new Socket(addr1, port);
+        BufferedReader in = new BufferedReader(new InputStreamReader(
+                sock.getInputStream()));
 // inicijalizuj izlazni stream
-PrintWriter out = new PrintWriter(new BufferedWriter( new OutputStreamWriter(
-sock.getOutputStream())), true);
- MessageData msg = new MessageData();
+        PrintWriter out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
+                sock.getOutputStream())), true);
+        MessageData msg = new MessageData();
         //    ReaderThread reader = new ReaderThread(sock, in, msg);
         //    WriterThread writer = new WriterThread(out, msg);
- out.println("pozdrav,saljem ti poruku");
-}
-    
-    
-     private  void sendMSG(ClientInfo client,String msg ) throws UnknownHostException, IOException{
-  int port=9001;
-    InetAddress addr1 = InetAddress.getByName(client.getIp());
-//Socket sock1 = new Socket(addr1, Integer.parseInt(niz[1]));
-Socket sock = new Socket(addr1, port);
-// inicijalizuj izlazni stream
-PrintWriter out = new PrintWriter(new BufferedWriter( new OutputStreamWriter(
-sock.getOutputStream())), true);
-        //    ReaderThread reader = new ReaderThread(sock, in, msg);
-        //    WriterThread writer = new WriterThread(out, msg);
- out.println(msg);
- Calendar cal = Calendar.getInstance();
- // "               "+cal.getTimeInMillis()
- jTextArea1.append(currentClient.getUsername() + ":   " + msg+ "\n");
-}
-    
+        out.println("pozdrav,saljem ti poruku");
+    }
+//slanje poruke zakomentarisao jer sam impelmentirao slanje bajtova zbog razmjene kljuceva
+//     private  void sendMSG(ClientInfo client,String msg ) throws UnknownHostException, IOException{
+//  int port=9001;
+//    InetAddress addr1 = InetAddress.getByName(client.getIp());
+////Socket sock1 = new Socket(addr1, Integer.parseInt(niz[1]));
+//Socket sock = new Socket(addr1, port);
+//// inicijalizuj izlazni stream
+//PrintWriter out = new PrintWriter(new BufferedWriter( new OutputStreamWriter(
+//sock.getOutputStream())), true);
+//        //    ReaderThread reader = new ReaderThread(sock, in, msg);
+//        //    WriterThread writer = new WriterThread(out, msg);
+// out.println(msg);
+// 
+// Calendar cal = Calendar.getInstance();
+// // "               "+cal.getTimeInMillis()
+// jTextArea1.append(currentClient.getUsername() + ":   " + msg+ "\n");
+//}
+
+    private void sendMSG(ClientInfo client, byte[] msg) throws UnknownHostException, IOException {
+        OutputStream out = null;
+        out = client.getSock().getOutputStream();
+
+        ByteArrayInputStream serverinput = new ByteArrayInputStream(msg);
+        int count;
+        byte[] bytearray = new byte[128];
+        byte[] cipherbuffer;
+        while ((count = serverinput.read(bytearray)) > 0) {
+            cipherbuffer = (tajni.encrypt(bytearray, client.getSecretKey()));
+            out.write(cipherbuffer, 0, cipherbuffer.length);
+        }
+        out.flush();
+    }
+
+    private void sendSecretKey(ClientInfo client, byte[] msg) throws UnknownHostException, IOException {
+        OutputStream out = null;
+        out = client.getSock().getOutputStream();
+        out.write(msg);
+        out.flush();
+    }
+
+    public Socket getClientSocket(ClientInfo client) throws IOException {
+        InetAddress addr1 = InetAddress.getByName(client.getIp());
+        Socket sock = new Socket(addr1, clientPort);
+        return sock;
+    }
+
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -318,13 +386,13 @@ sock.getOutputStream())), true);
     }// </editor-fold>//GEN-END:initComponents
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-     sendMessageToClint();
+        sendMessageToClint();
     }//GEN-LAST:event_jButton1ActionPerformed
 
     private void jMenuItem1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItem1ActionPerformed
-       try {
+        try {
             getOnlineUser();
-           
+
         } catch (IOException ex) {
             Logger.getLogger(ClientForm.class.getName()).log(Level.SEVERE, null, ex);
         } catch (ClassNotFoundException ex) {
@@ -387,14 +455,30 @@ sock.getOutputStream())), true);
         });
     }
 
-    public  JTextArea getjTextArea1() {
+    public JTextArea getjTextArea1() {
         return jTextArea1;
     }
 
     public void setjTextArea1(JTextArea jTextArea1) {
         this.jTextArea1 = jTextArea1;
     }
-     
+
+    public JList getjList1() {
+        return jList1;
+    }
+
+    public void setjList1(JList jList1) {
+        this.jList1 = jList1;
+    }
+
+    public KeyPair getKey() {
+        return key;
+    }
+
+    public void setKey(KeyPair key) {
+        this.key = key;
+    }
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButton1;

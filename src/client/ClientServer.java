@@ -8,7 +8,9 @@ package client;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
@@ -47,6 +49,8 @@ while (true) {
  in = new BufferedReader(new InputStreamReader(sock.getInputStream()));
  out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(sock.getOutputStream())), true);
 String request; 
+InputStream is = sock.getInputStream();
+OutputStream os = sock.getOutputStream();
 //while ((request = in.readLine()) != null) {
 //        System.out.println(request);
 //    out.println("haloo klijenntu 2 ,primio sam poruku");
@@ -56,8 +60,8 @@ String request;
  // msg.setOut(out);
           
  // WriterThread writer = new WriterThread(out, msg);        
-  ReaderThread reader = new ReaderThread(sock, in, msg,frm);
- 
+ // ReaderThread reader = new ReaderThread(sock, in, msg,frm);
+ ReaderThread reader = new ReaderThread(sock, is, msg,frm);
  // this.textArea.setText(msg.getMessager());
        
       }
