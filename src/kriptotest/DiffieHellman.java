@@ -42,7 +42,8 @@ public class DiffieHellman {
     SecureRandom rnd = new SecureRandom();
     p = BigInteger.probablePrime(bitLength, rnd);
     g = BigInteger.probablePrime(bitLength, rnd);
-    
+      System.out.println(p);
+      System.out.println(g);
     createSpecificKey(p, g);
   }
 
