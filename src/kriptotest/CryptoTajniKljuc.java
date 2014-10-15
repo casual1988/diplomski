@@ -20,12 +20,13 @@ public class CryptoTajniKljuc {
             byte[] plainText = {'a'};
             // generiranje DES tajnog kljuca
             System.out.println("\nGeneriram DES kljuc (molim pricekajte) ...");
-            KeyGenerator keyGen = KeyGenerator.getInstance("DES");
-            keyGen.init(56);
+            KeyGenerator keyGen = KeyGenerator.getInstance("DESede");
+            keyGen.init(168);
+            System.out.println(keyGen.getAlgorithm()   + " "+ keyGen.toString());
             Key key = keyGen.generateKey();
             System.out.println("Generiranje DES kljuca dovrseno!");
             // instanciranje DES cipher objekta i ispis providera
-            Cipher cipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
+            Cipher cipher = Cipher.getInstance("DESede/ECB/PKCS5Padding");
             System.out.println("\n" + cipher.getProvider().getInfo());
 
             // enkripcija poruke koristenjem tajnog kljuca
@@ -51,11 +52,9 @@ public class CryptoTajniKljuc {
 
     public Key generateKey() {
         try {
-            System.out.println("\nGeneriram DES kljuc (molim pricekajte) ...");
             KeyGenerator keyGen = KeyGenerator.getInstance("DES");
             keyGen.init(56);
             Key key = keyGen.generateKey();
-            System.out.println("Generiranje DES kljuca dovrseno!");
             return key;
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -66,10 +65,6 @@ public class CryptoTajniKljuc {
     public byte[] encrypt(byte[] plainText, Key key) {
         try {
             Cipher cipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
-            System.out.println("\n" + cipher.getProvider().getInfo());
-
-            // enkripcija poruke koristenjem tajnog kljuca
-            System.out.println("\nEnkripcija zapoceta ...");
             cipher.init(Cipher.ENCRYPT_MODE, key);
             byte[] cipherText = cipher.doFinal(plainText);
             return cipherText;
@@ -82,11 +77,8 @@ public class CryptoTajniKljuc {
     public byte[] decrypt(byte[] cipherText, Key key) {
         try {
             Cipher cipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
-            System.out.println("\nDekripcija zapoceta ...");
             cipher.init(Cipher.DECRYPT_MODE, key);
             byte[] newPlainText = cipher.doFinal(cipherText);
-            System.out.println("Dekripcija zavrsena: ");
-            System.out.println(new String(newPlainText, "UTF8"));
             return newPlainText;
         } catch (Exception ex) {
             ex.printStackTrace();
