@@ -15,6 +15,8 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Random;
 import javax.swing.JTextArea;
 
 /**
@@ -29,21 +31,22 @@ public class ClientServer extends Thread{
     private PrintWriter out;
     private MessageData msg;
     private ClientForm frm;
-
+    private ClientInfo currentClient;
   
     public ClientServer(){}
     
-    public ClientServer(ClientForm frm)
+    public ClientServer(ClientForm frm, ClientInfo currentClient)
     {
      this.frm = frm;
+     this.currentClient = currentClient;
     }
      public void  run(){//acceptClientMessage(){
          msg = new MessageData();
 try {
 // slušaj zahteve na datom portu, message port
-int port=9001;
-ServerSocket ss = new ServerSocket(port);
-    System.out.println("pokreut klijentski server");
+//int port=9001;
+ServerSocket ss = new ServerSocket(currentClient.getPort());
+    System.out.println("Pokrenut klijentski server na portu" + currentClient.getPort());
 while (true) {
  sock = ss.accept();
  in = new BufferedReader(new InputStreamReader(sock.getInputStream()));
@@ -61,6 +64,8 @@ OutputStream os = sock.getOutputStream();
           
  // WriterThread writer = new WriterThread(out, msg);        
  // ReaderThread reader = new ReaderThread(sock, in, msg,frm);
+
+    setClientOnSelectList(sock);
  ReaderThread reader = new ReaderThread(sock, is, msg,frm);
  // this.textArea.setText(msg.getMessager());
        
@@ -100,4 +105,16 @@ ex.printStackTrace();
     public void setMessage(MessageData msg){
         this.msg = msg;
             } 
+    
+    public void setClientOnSelectList(Socket sock)
+    {
+        String ip = sock.getInetAddress().getHostAddress();
+        ArrayList<ClientInfo> onlineClients = this.frm.getOnlineUser();
+        for (int i = 0; i < onlineClients.size(); i++) {
+            if(ip.equals(onlineClients.get(i).getIp())){
+                    frm.getjList1().setSelectedValue(onlineClients.get(i), true);
+               
+            }
+        }
+    }
 }

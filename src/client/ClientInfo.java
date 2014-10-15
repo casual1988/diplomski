@@ -18,7 +18,9 @@ import java.security.PublicKey;
 public class ClientInfo implements Serializable{
     private String username;
     private String password;
-    private int id;
+    private int port;
+    private int videoPort;
+    private int micPort;
     private String ip;
     private Socket sock;
     private PublicKey key;  //mozda cu cuvati javne kljuceve na serveru ako nadjem nacin
@@ -43,12 +45,12 @@ public class ClientInfo implements Serializable{
         this.password = password;
     }
 
-    public int getId() {
-        return id;
+    public int getPort() {
+        return port;
     }
 
-    public void setId(int id) {
-        this.id = id;
+    public void setPort(int port) {
+        this.port = port;
     }
 
     public String getIp() {
@@ -82,6 +84,23 @@ public class ClientInfo implements Serializable{
     public void setSecretKey(Key secretKey) {
         this.secretKey = secretKey;
     }
+
+    public int getVideoPort() {
+        return videoPort;
+    }
+
+    public void setVideoPort(int videoPort) {
+        this.videoPort = videoPort;
+    }
+
+    public int getMicPort() {
+        return micPort;
+    }
+
+    public void setMicPort(int micPort) {
+        this.micPort = micPort;
+    }
+    
     
 
     @Override
